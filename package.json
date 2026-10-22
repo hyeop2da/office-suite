@@ -1,0 +1,24 @@
+{
+  "name": "office-suite",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "독립 구현 오피스 스위트 코어 (HWPX 무손실 편집부터)",
+  "scripts": {
+    "test": "node --test --test-reporter=spec \"test/*.test.ts\"",
+    "build": "node tools/build.mjs",
+    "serve": "node tools/serve.mjs",
+    "dev": "node tools/build.mjs && node tools/serve.mjs",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@xmldom/xmldom": "0.8.10",
+    "esbuild": "^0.25.0"
+  },
+  "dependencies": {
+    "@rhwp/core": "^0.8.7",
+    "fflate": "^0.8.2",
+    "pdfjs-dist": "^4.10.38"
+  }
+}

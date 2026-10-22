@@ -1,0 +1,15 @@
+{
+  "name": "문서 작업실",
+  "short_name": "문서 작업실",
+  "description": "HWPX·DOCX·XLSX·PPTX·PDF를 브라우저 안에서 열고 고치는 시험판",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f5f1",
+  "theme_color": "#0b5cad",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

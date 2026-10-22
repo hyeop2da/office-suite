@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; manifest-src 'self'; worker-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0b5cad">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>문서 작업실</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>문서 작업실</h1>
+  <div class="actions">
+    <label class="btn primary" for="file">파일 열기</label>
+    <input id="file" type="file" accept=".hwpx,.hwp,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.pdf" hidden>
+    <select id="sample" aria-label="샘플 문서 열기"><option value="">샘플</option></select>
+  </div>
+</header>
+
+<main id="main">
+  <p class="privacy" id="privacy">문서는 이 브라우저 안에서만 처리되며 서버로 전송되지 않습니다.
+    편집 중인 내용은 이 기기 브라우저(IndexedDB)에 임시 보존되고, 아래 스위치로 끄거나 지울 수 있습니다. <button id="clear-draft" class="btn small-btn">임시 저장 지우기</button></p>
+  <section id="draft-banner" class="banner" hidden>
+    <span id="draft-text"></span>
+    <button id="draft-resume" class="btn">이어서 하기</button>
+    <button id="draft-delete" class="btn">삭제</button>
+  </section>
+  <section id="empty" class="empty">
+    <p>HWPX, DOCX 파일을 열어 글자를 고치고 저장할 수 있습니다.</p>
+    <p class="small">지원 범위: HWPX·DOCX 글자 편집. XLSX, PPTX, PDF, HWP·DOC 구형 형식은 아직 지원하지 않습니다.</p>
+  </section>
+  <section id="doc" hidden>
+    <div class="docinfo">
+      <strong id="doc-name"></strong>
+      <span id="doc-format" class="badge"></span>
+      <p id="doc-note" class="small"></p>
+    </div>
+    <div id="paras"></div>
+    <button id="more" class="btn" hidden>더 보기</button>
+  </section>
+  <section id="sheet" hidden>
+    <div class="sheetbar">
+      <label class="small" for="sheet-select">시트</label>
+      <select id="sheet-select"></select>
+    </div>
+    <div class="cellbar">
+      <strong id="cell-ref" class="small"></strong>
+      <textarea id="cell-input" rows="2" aria-label="칸 값" enterkeyhint="done"></textarea>
+      <p id="cell-msg" class="small" role="status"></p>
+    </div>
+    <div class="gridwrap"><table id="grid"></table></div>
+    <button id="grid-more" class="btn" hidden>다음 행 더 보기</button>
+  </section>
+  <section id="pdf" hidden>
+    <div class="pdfbar">
+      <button id="pdf-prev" class="btn" aria-label="이전 쪽">‹</button>
+      <label class="small" for="pdf-page">쪽</label>
+      <input id="pdf-page" type="number" min="1" value="1" inputmode="numeric" aria-label="쪽 번호">
+      <span class="small">/ <span id="pdf-total">1</span></span>
+      <button id="pdf-next" class="btn" aria-label="다음 쪽">›</button>
+      <button id="pdf-zoom-out" class="btn" aria-label="축소">−</button>
+      <button id="pdf-zoom-in" class="btn" aria-label="확대">＋</button>
+      <button id="pdf-fit" class="btn">맞춤</button>
+    </div>
+    <button id="pdf-memo" class="btn">메모 추가</button>
+    <div id="pdf-wrap" class="pdfwrap">
+      <div id="pdf-stage"><canvas id="pdf-canvas"></canvas><div id="pdf-marks"></div></div>
+    </div>
+    <div id="pdf-editor" class="cellbar" hidden>
+      <textarea id="pdf-note-input" rows="3" aria-label="메모 글자" placeholder="메모를 입력하세요"></textarea>
+      <button id="pdf-note-add" class="btn primary">메모 넣기</button>
+      <button id="pdf-note-cancel" class="btn">취소</button>
+    </div>
+    <h2 id="pdf-notes-title" class="small"></h2>
+    <ul id="pdf-notes"></ul>
+  </section>
+  <section id="preview" hidden>
+    <div class="prevbar">
+      <button id="prev-open" class="btn">쪽 보기</button>
+      <span id="prev-info" class="small"></span>
+    </div>
+    <p class="small">미리보기는 읽기 전용이며 글꼴·줄바꿈이 한/글과 다를 수 있습니다. 처음 열 때 약 12MB를 내려받습니다.</p>
+    <div id="pages"></div>
+    <button id="prev-more" class="btn" hidden>다음 쪽 더 보기</button>
+  </section>
+  <p id="status" role="status" aria-live="polite"></p>
+  <p class="small"><button id="about-open" class="btn small-btn">정보·라이선스</button></p>
+</main>
+<dialog id="about" aria-labelledby="about-title">
+  <h2 id="about-title">문서 작업실 (시험판)</h2>
+  <p>본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.</p>
+  <p class="small">한글, 한컴, HWP, HWPX는 한글과컴퓨터의 상표입니다. 이 앱은 한글과컴퓨터, Microsoft 등과 제휴하거나 보증받은 제품이 아닙니다.</p>
+  <p class="small">오픈소스: fflate(MIT, 압축), rhwp(MIT, 쪽 미리보기 전용).</p>
+  <p class="small">문서는 이 브라우저 안에서만 처리되며 서버로 전송되지 않습니다. 현재 HWPX·DOCX는 글자 편집, HWP는 미리보기만 지원합니다. 나머지 형식은 아직 지원하지 않습니다.</p>
+  <button id="about-close" class="btn primary">닫기</button>
+</dialog>
+
+<footer class="toolbar" id="toolbar" hidden>
+  <label class="switch"><input type="checkbox" id="autosave" checked> 임시 보존</label>
+  <span id="count" class="count">변경 0</span>
+  <button id="revert-all" class="btn">모두 되돌리기</button>
+  <button id="save" class="btn primary">저장·다운로드</button>
+</footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>
