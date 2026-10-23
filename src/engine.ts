@@ -18,7 +18,7 @@ export interface FormatInfo {
 }
 
 export const FORMATS: Record<FormatId, FormatInfo> = {
-  hwpx: { id: 'hwpx', label: 'HWPX', support: 'text-edit', note: '글자 편집·저장(원본 구조 보존). 표 셀·머리말 글자 포함. 서식 편집·문단 나누기 없음' },
+  hwpx: { id: 'hwpx', label: 'HWPX', support: 'text-edit', note: '글자 편집·저장(원본 구조 보존). 표 셀·머리말 글자 포함, 탭·줄바꿈(Shift+Enter) 삽입 가능. 서식 편집·문단 나누기는 아직 화면에 없음' },
   docx: { id: 'docx', label: 'DOCX', support: 'text-edit', note: '글자 편집·저장(원본 구조 보존). 서식·표 구조 편집 없음' },
   xlsx: { id: 'xlsx', label: 'XLSX', support: 'cell-edit', note: '칸 값 편집·저장(숫자는 숫자로 유지, 원본 구조 보존). 수식·서식·차트 편집과 수식 재계산은 없습니다' },
   pptx: { id: 'pptx', label: 'PPTX', support: 'text-edit', note: '슬라이드·노트 글자 편집·저장(원본 구조 보존). 필드(슬라이드 번호 등)·도형·서식·애니메이션 편집은 없습니다' },
@@ -77,6 +77,8 @@ export interface DocParagraph {
 
 export interface DocumentEngine {
   readonly format: FormatInfo;
+  /** 문단 글자 안에 탭·줄바꿈을 그대로 넣고 뺄 수 있으면 true(지원 형식만). 거짓이면 UI가 \t\n을 막는다. */
+  readonly supportsTabBreak: boolean;
   paragraphs(): DocParagraph[];
   setParagraphText(id: string, text: string, opt?: EditOptions): void;
   save(): Uint8Array;
@@ -89,20 +91,27 @@ function parseId(id: string): [string, number] {
 
 class HwpxEngine implements DocumentEngine {
   readonly format = FORMATS.hwpx;
+  readonly supportsTabBreak = true;
   private doc: HwpxDocument;
   constructor(bytes: Uint8Array) { this.doc = HwpxDocument.open(bytes); }
   paragraphs(): DocParagraph[] {
-    return this.doc.paragraphs().map(p => ({ id: `${p.section}|${p.index}`, part: p.section, context: p.context, text: p.text, partlyLocked: p.partlyLocked }));
+    // richParagraphText는 탭·줄바꿈을 \t·\n으로 보여준다(색인 범위만 확인하고, 다른 요소가 섞여도
+    // 던지지 않는다 — hasOtherTags 검사는 setParagraphRichText 쓰기 쪽에만 있다. 읽기는 늘 안전하다).
+    return this.doc.paragraphs().map(p => ({
+      id: `${p.section}|${p.index}`, part: p.section, context: p.context,
+      text: this.doc.richParagraphText(p.section, p.index), partlyLocked: p.partlyLocked,
+    }));
   }
   setParagraphText(id: string, text: string, opt?: EditOptions): void {
     const [part, i] = parseId(id);
-    this.doc.setParagraphText(part, i, text, opt);
+    this.doc.setParagraphRichText(part, i, text, opt);
   }
   save(): Uint8Array { return this.doc.save(); }
 }
 
 class DocxEngine implements DocumentEngine {
   readonly format = FORMATS.docx;
+  readonly supportsTabBreak = false;
   private doc: DocxDocument;
   constructor(bytes: Uint8Array) { this.doc = DocxDocument.open(bytes); }
   paragraphs(): DocParagraph[] {
@@ -122,6 +131,7 @@ export class UnsupportedFormatError extends Error {
 
 class PptxEngine implements DocumentEngine {
   readonly format = FORMATS.pptx;
+  readonly supportsTabBreak = false;
   private doc: PptxDocument;
   constructor(bytes: Uint8Array) { this.doc = PptxDocument.open(bytes); }
   paragraphs(): DocParagraph[] {

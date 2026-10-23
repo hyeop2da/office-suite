@@ -21,7 +21,10 @@ main { max-width:820px; margin:0 auto; padding:12px calc(12px + env(safe-area-in
 .badge { display:inline-block; padding:1px 8px; border-radius:999px; background:var(--accent); color:var(--accent-fg); font-size:12px; margin-left:6px; }
 .para { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px; margin:8px 0; }
 .para.changed { background:var(--changed); border-color:var(--warn); }
-.para .meta { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); min-height:24px; }
+.para .meta { display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:12px; color:var(--muted); min-height:24px; }
+.para .meta .para-tools { display:flex; gap:4px; }
+.para .meta .para-tools .btn { min-height:28px; padding:0 8px; font-size:12px; }
+.section-title { font-size:13px; font-weight:600; color:var(--muted); margin:14px 0 4px; }
 .para textarea { width:100%; border:0; background:transparent; color:inherit; font:inherit; font-size:16px; resize:none; padding:4px 2px; overflow:hidden; min-height:2.6em; }
 .para textarea:focus { outline:2px solid var(--accent); border-radius:6px; }
 .para textarea[readonly] { color:var(--muted); }
@@ -36,9 +39,10 @@ main { max-width:820px; margin:0 auto; padding:12px calc(12px + env(safe-area-in
 @media (min-width:900px) { main { padding-top:20px; } }
 .small-btn { min-height:32px; font-size:13px; padding:0 10px; vertical-align:middle; }
 
-.prevbar { display:flex; gap:8px; align-items:center; margin:8px 0; }
-#pages img.page { display:block; width:100%; height:auto; background:#fff; border:1px solid var(--line); margin:8px 0; }
-#preview { margin-top:12px; }
+.prevbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0; }
+#pages { background:var(--bg); padding:4px 0; }
+#pages img.page { display:block; width:100%; height:auto; background:#fff; border:1px solid var(--line); border-radius:2px; box-shadow:0 1px 4px rgba(0,0,0,.12); margin:0 auto 14px; max-width:720px; }
+#preview { margin:4px 0 16px; }
 dialog { max-width:min(92vw,560px); border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--fg); }
 dialog::backdrop { background:rgba(0,0,0,.4); }
 

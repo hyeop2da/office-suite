@@ -78,20 +78,29 @@ function renderMorePages(): void {
   $('prev-more').hidden = previewShown >= previewDoc.pageCount;
 }
 
-async function onPreview(): Promise<void> {
+async function onPreview(targetCount = PREVIEW_STEP): Promise<void> {
   if (!previewSource) return;
   const btn = $('prev-open') as HTMLButtonElement;
   btn.disabled = true;
-  $('prev-info').textContent = '불러오는 중… (처음에는 큰 파일을 내려받습니다)';
+  $('prev-info').textContent = previewDoc ? '다시 그리는 중…' : '불러오는 중… (처음에는 큰 파일을 내려받습니다)';
   try {
     const bytes = previewSource();
     resetPreview();
     previewDoc = await openPreview(bytes);
-    renderMorePages();
+    while (previewShown < Math.min(targetCount, previewDoc.pageCount)) renderMorePages();
   } catch (e) {
     $('prev-info').textContent = '';
     setStatus(`미리보기를 만들지 못했습니다: ${(e as Error).message}`, 'err');
   } finally { btn.disabled = false; }
+}
+
+/** 편집할 때마다 바로 다시 그리면 느려지니 잠깐 쉬었다가(이미 보던 쪽 수만큼) 다시 그린다. */
+let previewTimer: number | undefined;
+function schedulePreviewRefresh(): void {
+  if (!previewSource || !previewDoc) return; // 아직 한 번도 안 열었으면 자동으로 받아오지 않는다(데이터 절약)
+  window.clearTimeout(previewTimer);
+  const want = Math.max(previewShown, PREVIEW_STEP);
+  previewTimer = window.setTimeout(() => { void onPreview(want); }, 700);
 }
 
 function showViewOnly(bytes: Uint8Array, name: string, info: { label: string; note: string }): void {
@@ -114,6 +123,7 @@ function showViewOnly(bytes: Uint8Array, name: string, info: { label: string; no
   $('preview').hidden = false;
   document.documentElement.style.setProperty('--toolbar-h', '0px');
   setStatus(`${info.label}: ${info.note}`, 'warn');
+  void onPreview();
 }
 
 function setStatus(msg: string, kind: '' | 'ok' | 'err' | 'warn' = ''): void {
@@ -144,8 +154,17 @@ function scheduleSave(): void {
 
 function autosize(t: HTMLTextAreaElement): void { t.style.height = 'auto'; t.style.height = `${t.scrollHeight}px`; }
 
+/** 커서 위치에 글자를 끼워 넣고 커서를 그 뒤로 옮긴다(Tab 단추·Tab 키 둘 다 이걸 쓴다). */
+function insertAtCursor(ta: HTMLTextAreaElement, s: string): void {
+  const start = ta.selectionStart ?? ta.value.length, end = ta.selectionEnd ?? ta.value.length;
+  ta.value = ta.value.slice(0, start) + s + ta.value.slice(end);
+  ta.selectionStart = ta.selectionEnd = start + s.length;
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 function renderParas(): void {
   if (!session) return;
+  const richText = session.engine.supportsTabBreak;
   const host = $('paras');
   const list = session.paragraphs;
   const end = Math.min(list.length, shown + PAGE);
@@ -157,27 +176,57 @@ function renderParas(): void {
     meta.className = 'meta';
     const label = document.createElement('span');
     label.textContent = `${i + 1}. ${p.group ? `${p.group} · ` : ''}${CONTEXT_LABEL[p.context] ?? p.context}${p.partlyLocked ? ' · 탭·필드 등이 섞여 보기만 가능' : ''}`;
+    const tools = document.createElement('span');
+    tools.className = 'para-tools';
+    if (richText && !p.partlyLocked) {
+      const tabBtn = document.createElement('button');
+      tabBtn.className = 'btn small-btn'; tabBtn.type = 'button'; tabBtn.textContent = '탭';
+      tabBtn.title = '커서 위치에 탭 넣기';
+      const brBtn = document.createElement('button');
+      brBtn.className = 'btn small-btn'; brBtn.type = 'button'; brBtn.textContent = '줄바꿈';
+      brBtn.title = '커서 위치에 줄 안 줄바꿈(Shift+Enter) 넣기';
+      tools.append(tabBtn, brBtn);
+      // ta는 아래서 만들어지므로 클릭 핸들러는 ta 생성 뒤에 붙인다(바로 아래 참고).
+      tools.dataset.hasTools = '1';
+    }
     const rv = document.createElement('button');
     rv.className = 'btn revert';
     rv.textContent = '되돌리기';
     rv.hidden = true;
-    meta.append(label, rv);
+    meta.append(label, tools, rv);
     const ta = document.createElement('textarea');
     ta.value = session.edits.get(p.id) ?? p.text;
     ta.rows = 1;
     ta.readOnly = p.partlyLocked;
     ta.setAttribute('aria-label', `${i + 1}번 문단`);
-    ta.setAttribute('enterkeyhint', 'done');
+    ta.setAttribute('enterkeyhint', richText ? 'enter' : 'done');
     textareas.set(p.id, ta);
     const refresh = (): void => { const ch = session!.edits.has(p.id); box.classList.toggle('changed', ch); rv.hidden = !ch; };
+    if (tools.dataset.hasTools) {
+      const [tabBtn, brBtn] = Array.from(tools.children) as HTMLButtonElement[];
+      tabBtn.addEventListener('click', () => { ta.focus(); insertAtCursor(ta, '\t'); });
+      brBtn.addEventListener('click', () => { ta.focus(); insertAtCursor(ta, '\n'); });
+    }
+    if (richText) {
+      // Tab 키는 보통 포커스를 옮기므로, 여기서는 그 대신 탭 글자를 끼워 넣는다.
+      ta.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') { e.preventDefault(); insertAtCursor(ta, '\t'); }
+      });
+    }
     ta.addEventListener('input', () => {
-      // 줄바꿈과 탭은 아직 지원하지 않으므로 입력에서 걸러 낸다.
-      const clean = ta.value.replace(/[\r\n\t]+/g, ' ');
-      if (clean !== ta.value) { ta.value = clean; setStatus('줄바꿈·탭은 아직 넣을 수 없어 공백으로 바꿨습니다.', 'warn'); }
-      session!.setText(p.id, ta.value);
-      refresh(); updateCount(); autosize(ta); scheduleSave();
+      if (!richText) {
+        // 줄바꿈과 탭은 이 형식에서 아직 지원하지 않으므로 입력에서 걸러 낸다.
+        const clean = ta.value.replace(/[\r\n\t]+/g, ' ');
+        if (clean !== ta.value) { ta.value = clean; setStatus('줄바꿈·탭은 아직 넣을 수 없어 공백으로 바꿨습니다.', 'warn'); }
+      }
+      try {
+        session!.setText(p.id, ta.value);
+        refresh(); updateCount(); autosize(ta); scheduleSave(); schedulePreviewRefresh();
+      } catch (e) {
+        setStatus(`이 문단에는 넣을 수 없습니다: ${(e as Error).message}`, 'err');
+      }
     });
-    rv.addEventListener('click', () => { session!.revert(p.id); ta.value = p.text; refresh(); updateCount(); autosize(ta); scheduleSave(); });
+    rv.addEventListener('click', () => { session!.revert(p.id); ta.value = p.text; refresh(); updateCount(); autosize(ta); scheduleSave(); schedulePreviewRefresh(); });
     refresh();
     box.append(meta, ta);
     host.append(box);
@@ -207,12 +256,15 @@ function showSession(s: EditSession): void {
   renderParas();
   updateCount();
   resetPreview();
-  previewSource = s.engine.format.id === 'hwpx' ? () => {
+  const isHwpx = s.engine.format.id === 'hwpx';
+  previewSource = isHwpx ? () => {
     const r = s.save(); // 저장 때와 같은 검증을 거친 현재 편집본을 그린다
     if (!r.verified) throw new Error(r.problems[0] ?? '저장본 검증 실패');
     return r.bytes;
   } : null;
   $('preview').hidden = previewSource === null;
+  // HWPX는 한/글처럼 쪽 모양이 바로 보이는 게 목표라, 버튼을 누르기 전에 미리 한 번 그려 둔다.
+  if (isHwpx) void onPreview();
 }
 
 function openSheet(bytes: Uint8Array, name: string, info: { label: string; note: string }, edits?: [string, string][]): void {
@@ -384,7 +436,7 @@ function init(): void {
     input.value = '';
   });
   $('more').addEventListener('click', renderParas);
-  $('prev-open').addEventListener('click', () => { void onPreview(); });
+  $('prev-open').addEventListener('click', () => { void onPreview(Math.max(previewShown, PREVIEW_STEP)); });
   $('prev-more').addEventListener('click', renderMorePages);
   const about = $('about') as HTMLDialogElement;
   $('about-open').addEventListener('click', () => about.showModal());

@@ -87,12 +87,27 @@ test.describe('HWPX 흐름', () => {
     expect(s.paragraphs.some(p => p.context === 'cell' && p.text === `${text}셀`)).toBe(true);
   });
 
-  test('줄바꿈을 붙여 넣으면 공백으로 바뀌고 알린다', async ({ page }) => {
+  test('탭·줄바꿈을 그대로 넣을 수 있고, 저장·재열기해도 유지된다(2026-10-23 추가)', async ({ page }) => {
     await openSample(page, HWPX_LABEL);
     const ta = page.locator('#paras textarea').nth(1);
     await ta.fill('가\n나\t다');
-    await expect(ta).toHaveValue('가 나 다');
-    await expect(page.locator('#status')).toContainText('줄바꿈·탭');
+    await expect(ta).toHaveValue('가\n나\t다'); // 더 이상 공백으로 바뀌지 않는다
+    const saved = await download(page);
+    const s = new EditSession(saved, 'x.hwpx');
+    expect(s.paragraphs[1].text).toBe('가\n나\t다');
+  });
+
+  test('탭·줄바꿈 단추로 커서 위치에 끼워 넣을 수 있다', async ({ page }) => {
+    await openSample(page, HWPX_LABEL);
+    const box = page.locator('.para').nth(1);
+    const ta = box.locator('textarea');
+    await ta.click();
+    await page.keyboard.press('End');
+    await box.getByRole('button', { name: '탭', exact: true }).click();
+    await ta.pressSequentially('뒤');
+    await box.getByRole('button', { name: '줄바꿈', exact: true }).click();
+    await ta.pressSequentially('끝');
+    await expect(ta).toHaveValue(/\t뒤\n끝$/);
   });
 
   test('되돌리기와 모두 되돌리기', async ({ page }) => {

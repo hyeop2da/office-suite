@@ -31,8 +31,18 @@
     <button id="draft-delete" class="btn">삭제</button>
   </section>
   <section id="empty" class="empty">
-    <p>HWPX, DOCX 파일을 열어 글자를 고치고 저장할 수 있습니다.</p>
-    <p class="small">지원 범위: HWPX·DOCX 글자 편집. XLSX, PPTX, PDF, HWP·DOC 구형 형식은 아직 지원하지 않습니다.</p>
+    <p>HWPX, DOCX, XLSX, PPTX, PDF 파일을 열어 고치고 저장할 수 있습니다.</p>
+    <p class="small">지원 범위: HWPX·DOCX 글자 편집(HWPX는 쪽 모양도 함께 보임), XLSX 칸 값 편집, PPTX 슬라이드·노트 글자 편집, PDF 열람과 텍스트 메모. HWP·DOC 등 구형 바이너리 형식은 쪽 미리보기(HWP)만 되거나 아직 지원하지 않습니다.</p>
+  </section>
+  <section id="preview" hidden>
+    <div class="prevbar">
+      <strong class="small">실제 쪽 모양(읽기 전용)</strong>
+      <button id="prev-open" class="btn small-btn">새로고침</button>
+      <span id="prev-info" class="small"></span>
+    </div>
+    <p class="small">편집 칸에서 고치면 이 쪽 그림도 따라 바뀝니다. 글꼴·줄바꿈이 한/글과 다를 수 있고, 처음 열 때 약 12MB를 내려받습니다.</p>
+    <div id="pages"></div>
+    <button id="prev-more" class="btn" hidden>다음 쪽 더 보기</button>
   </section>
   <section id="doc" hidden>
     <div class="docinfo">
@@ -40,6 +50,7 @@
       <span id="doc-format" class="badge"></span>
       <p id="doc-note" class="small"></p>
     </div>
+    <h2 class="section-title small">문단별 글자 편집</h2>
     <div id="paras"></div>
     <button id="more" class="btn" hidden>더 보기</button>
   </section>
@@ -79,15 +90,6 @@
     <h2 id="pdf-notes-title" class="small"></h2>
     <ul id="pdf-notes"></ul>
   </section>
-  <section id="preview" hidden>
-    <div class="prevbar">
-      <button id="prev-open" class="btn">쪽 보기</button>
-      <span id="prev-info" class="small"></span>
-    </div>
-    <p class="small">미리보기는 읽기 전용이며 글꼴·줄바꿈이 한/글과 다를 수 있습니다. 처음 열 때 약 12MB를 내려받습니다.</p>
-    <div id="pages"></div>
-    <button id="prev-more" class="btn" hidden>다음 쪽 더 보기</button>
-  </section>
   <p id="status" role="status" aria-live="polite"></p>
   <p class="small"><button id="about-open" class="btn small-btn">정보·라이선스</button></p>
 </main>
@@ -96,7 +98,7 @@
   <p>본 제품은 한컴의 HWP 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.</p>
   <p class="small">한글, 한컴, HWP, HWPX는 한글과컴퓨터의 상표입니다. 이 앱은 한글과컴퓨터, Microsoft 등과 제휴하거나 보증받은 제품이 아닙니다.</p>
   <p class="small">오픈소스: fflate(MIT, 압축), rhwp(MIT, 쪽 미리보기 전용).</p>
-  <p class="small">문서는 이 브라우저 안에서만 처리되며 서버로 전송되지 않습니다. 현재 HWPX·DOCX는 글자 편집, HWP는 미리보기만 지원합니다. 나머지 형식은 아직 지원하지 않습니다.</p>
+  <p class="small">문서는 이 브라우저 안에서만 처리되며 서버로 전송되지 않습니다. HWPX·DOCX는 글자 편집(HWPX는 탭·줄바꿈 삽입과 쪽 모양 미리보기 포함), XLSX는 칸 값 편집, PPTX는 슬라이드·노트 글자 편집, PDF는 열람과 텍스트 메모 추가를 지원합니다. HWP(구형 바이너리)는 쪽 미리보기만 되고, DOC·XLS·PPT 등 나머지 구형 형식은 아직 지원하지 않습니다.</p>
   <button id="about-close" class="btn primary">닫기</button>
 </dialog>
 
